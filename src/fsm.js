@@ -7,6 +7,7 @@ class FSM {
         if(config === undefined)
             throw new Error("config must not be undefined.");
         this.states = config.states;
+        this.undoTransition = [];
         this.transition = [ config.initial ];
     }
 
@@ -25,49 +26,29 @@ class FSM {
     changeState(state) {
         if(this.states[state] === undefined) {
             throw new Error("state doesn't exist"); 
-        }
-        
-        this.transition[this.transition.length - 1] = state;
+        }        
+        this.transition.push(state);
+        this.undoTransition = [];
     }
 
     /**
      * Changes state according to event transition rules.
      * @param event
      */
-
-    // states: {
-    //     normal: {
-    //         transitions: {
-    //             study: 'busy',
-    //         }
-    //     },
-    //     busy: {
-    //         transitions: {
-    //             get_tired: 'sleeping',
-    //             get_hungry: 'hungry',
-    //         }
-    //     },
-    //     hungry: {
-    //         transitions: {
-    //             eat: 'normal'
-    //         },
-    //     },
-    //     sleeping: {
-    //         transitions: {
-    //             get_hungry: 'hungry',
-    //             get_up: 'normal',
-    //         },
-    //     },
-    // }
     trigger(event) {
-        var currState = getState();
-        Object.keys(this.states[currState].transitions).forEach(function(i) {
-            if(i[event] != undefined) {
-                this.transition.push(i);
+        var currState = this.getState();
+        var isFind = false;
+        Object.keys(this.states[currState].transitions).forEach(function(i) {            
+            if(i == event) {
+                this.transition.push(this.states[currState].transitions[i]);
+                isFind = true;
                 return;
             }
         }, this);
-        return false;
+        if(!isFind) {
+            throw new Error();
+        }
+        this.undoTransition = [];
     }
 
     /**
@@ -103,10 +84,12 @@ class FSM {
      * @returns {Boolean}
      */
     undo() {
-        if(this.transition.length === 1) {
+        if(this.transition.length === 1 || this.transition.length === 0) {
             return false;
         }
-        this.transition.pop();
+        var state = this.transition.pop();
+        this.undoTransition.push(state);
+        return true;
     }
 
     /**
@@ -114,13 +97,20 @@ class FSM {
      * Returns false if redo is not available.
      * @returns {Boolean}
      */
-    redo() {}
+    redo() {
+        if(this.undoTransition.length === 0) {
+            return false;
+        }
+        this.transition.push(this.undoTransition.pop());
+        return true;
+    }
 
     /**
      * Clears transition history
      */
     clearHistory() {
-        this.transition = [];
+        this.transition = [];        
+        this.undoTransition = [];
     }
 }
 
